@@ -1,0 +1,563 @@
+/*
+ * Native WordPress admin dark theme.
+ *
+ * Loaded ONLY on native (non-Aurora) admin pages, and every rule is gated
+ * on html.aurora-dark so it is completely inert in light mode. It restyles
+ * the common WordPress admin elements to match Aurora's dark palette using
+ * the --aurora-* variables defined in the shell stylesheet.
+ *
+ * Scope is kept under #wpcontent / #wpbody-content so it never reaches the
+ * Aurora sidebar/toolbar (which live in their own root) and cannot leak to
+ * the front end. This is the one intentionally-large styling surface, kept
+ * isolated in a single file on purpose.
+ */
+
+html.aurora-dark.aurora-ready #wpbody-content,
+html.aurora-dark.aurora-ready #wpbody-content .wrap {
+  color: var(--aurora-text);
+}
+
+/* Headings & text -------------------------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content h1,
+html.aurora-dark.aurora-ready #wpbody-content h2,
+html.aurora-dark.aurora-ready #wpbody-content h3,
+html.aurora-dark.aurora-ready #wpbody-content h4,
+html.aurora-dark.aurora-ready #wpbody-content h5,
+html.aurora-dark.aurora-ready #wpbody-content h6,
+html.aurora-dark.aurora-ready #wpbody-content p,
+html.aurora-dark.aurora-ready #wpbody-content li,
+html.aurora-dark.aurora-ready #wpbody-content dt,
+html.aurora-dark.aurora-ready #wpbody-content dd,
+html.aurora-dark.aurora-ready #wpbody-content label,
+html.aurora-dark.aurora-ready #wpbody-content th,
+html.aurora-dark.aurora-ready #wpbody-content td,
+html.aurora-dark.aurora-ready #wpbody-content strong {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .description,
+html.aurora-dark.aurora-ready #wpbody-content .howto,
+html.aurora-dark.aurora-ready #wpbody-content .subtitle,
+html.aurora-dark.aurora-ready #wpbody-content .wp-heading-inline + .subtitle {
+  color: var(--aurora-text-muted);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content a {
+  color: var(--aurora-accent);
+}
+
+/* Postboxes, cards, metaboxes ------------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .postbox,
+html.aurora-dark.aurora-ready #wpbody-content .card,
+html.aurora-dark.aurora-ready #wpbody-content .welcome-panel,
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table,
+/* .widefat: WP's general "wide flat table" utility class, used beyond just
+   WP_List_Table screens — e.g. update-core.php's plugin/theme update
+   tables (class="widefat updates-table", no .wp-list-table and no
+   .striped either), which were completely uncovered without this. */
+html.aurora-dark.aurora-ready #wpbody-content .widefat,
+html.aurora-dark.aurora-ready #wpbody-content .stuffbox {
+  background: var(--aurora-card-bg);
+  border-color: var(--aurora-card-border);
+  color: var(--aurora-text);
+  box-shadow: none;
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .postbox-header,
+html.aurora-dark.aurora-ready #wpbody-content .postbox .hndle,
+html.aurora-dark.aurora-ready #wpbody-content .postbox h2,
+html.aurora-dark.aurora-ready #wpbody-content .postbox h3 {
+  border-color: var(--aurora-card-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .inside,
+html.aurora-dark.aurora-ready #wpbody-content .welcome-panel-content {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .handlediv,
+html.aurora-dark.aurora-ready #wpbody-content .postbox .handle-order-higher,
+html.aurora-dark.aurora-ready #wpbody-content .postbox .handle-order-lower {
+  color: var(--aurora-text-muted);
+}
+
+/* Tables ---------------------------------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table th,
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table td,
+html.aurora-dark.aurora-ready #wpbody-content .widefat th,
+html.aurora-dark.aurora-ready #wpbody-content .widefat td {
+  border-color: var(--aurora-border);
+  /* Core sets an explicit white background directly on <td> (not just the
+     row), which otherwise wins over .wp-list-table/.widefat's own dark
+     background above — transparent lets the row's actual background
+     (plain dark, or the striped-odd shade below) show through instead of a
+     white cell sitting on an otherwise-dark row. Seen first on Export/
+     Erase Personal Data's request-queue table, but this is a generic
+     WP_List_Table/.widefat gap, not specific to any one screen. */
+  background: transparent;
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table thead th,
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table tfoot th,
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table thead th a,
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table tfoot th a,
+html.aurora-dark.aurora-ready #wpbody-content .widefat thead th,
+html.aurora-dark.aurora-ready #wpbody-content .widefat tfoot th,
+html.aurora-dark.aurora-ready #wpbody-content .widefat thead th a,
+html.aurora-dark.aurora-ready #wpbody-content .widefat tfoot th a {
+  color: var(--aurora-text);
+}
+
+/* core's list-tables.css sets `.plugins tr { background: #fff; }` for the
+   native Plugins screen's list table — .plugins is a plain class name, not
+   scoped to that screen, so it also matches update-core.php's plugin-update
+   table (its <tbody> reuses the same class). Aurora's own Plugins screen is
+   a full custom rebuild that never hits this native markup, which is why
+   this collision hadn't surfaced before update-core.php. */
+html.aurora-dark.aurora-ready #wpbody-content .plugins tr {
+  background: transparent;
+}
+
+/* Theme File Editor / Plugin File Editor (theme-editor.php, plugin-editor.php)
+   share the same #templateside file-tree component. Core sets an explicit
+   light background directly on `#templateside > ul` (not just inherited from
+   the page), which nothing else here targets — combined with this file's own
+   light text/link colors (meant for a dark surface), that produced light text
+   on a light background, i.e. effectively unreadable rather than just
+   unstyled. Both screens are deliberately left as framed native content (not
+   rebuilt), same as Site Health/Updates, but still need to be legible. */
+html.aurora-dark.aurora-ready #wpbody-content #templateside > ul {
+  background: transparent;
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table.striped > tbody > :nth-child(odd),
+html.aurora-dark.aurora-ready #wpbody-content .striped > tbody > :nth-child(odd) {
+  background: var(--aurora-bg-subtle);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .wp-list-table tbody tr:hover {
+  background: var(--aurora-accent-soft);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .row-actions {
+  color: var(--aurora-text-muted);
+}
+
+/* Form fields ----------------------------------------------------------- */
+/* !important: some native screens style specific fields via a 2-ID
+   selector (e.g. core's `#titlediv #title { background: #fff }` on the
+   classic/attachment edit screen's title field) — that beats this rule's
+   single #wpbody-content id no matter how many classes we stack on it,
+   same specificity trap as the earlier block-editor-page background bug.
+   There's no legitimate case where a native admin form field should stay
+   white, so forcing it here is safe across every screen, not just the
+   one that surfaced it. */
+html.aurora-dark.aurora-ready #wpbody-content input[type='text'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='search'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='email'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='url'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='password'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='number'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='tel'],
+html.aurora-dark.aurora-ready #wpbody-content input[type='date'],
+html.aurora-dark.aurora-ready #wpbody-content textarea,
+html.aurora-dark.aurora-ready #wpbody-content select {
+  background: var(--aurora-bg-subtle) !important;
+  border-color: var(--aurora-border) !important;
+  color: var(--aurora-text) !important;
+}
+
+html.aurora-dark.aurora-ready #wpbody-content input::placeholder,
+html.aurora-dark.aurora-ready #wpbody-content textarea::placeholder {
+  color: var(--aurora-text-muted);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content input[type='text']:focus,
+html.aurora-dark.aurora-ready #wpbody-content input[type='search']:focus,
+html.aurora-dark.aurora-ready #wpbody-content textarea:focus,
+html.aurora-dark.aurora-ready #wpbody-content select:focus {
+  border-color: var(--aurora-accent);
+  box-shadow: 0 0 0 1px var(--aurora-accent);
+  outline: none;
+}
+
+/* Buttons --------------------------------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .button,
+html.aurora-dark.aurora-ready #wpbody-content .button-secondary {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .button:hover,
+html.aurora-dark.aurora-ready #wpbody-content .button-secondary:hover {
+  background: var(--aurora-border);
+  border-color: var(--aurora-text-muted);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .button-primary {
+  background: var(--aurora-accent);
+  border-color: var(--aurora-accent);
+  color: #fff;
+  text-shadow: none;
+  box-shadow: none;
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .button-primary:hover {
+  filter: brightness(1.1);
+}
+
+/* Nav tabs -------------------------------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .nav-tab-wrapper,
+html.aurora-dark.aurora-ready #wpbody-content .wp-filter {
+  background: var(--aurora-card-bg);
+  border-color: var(--aurora-border);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .wp-filter .filter-links a {
+  color: var(--aurora-accent);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .wp-filter .filter-links .current {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .wp-filter .search-form input[type='search'] {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .nav-tab {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text-muted);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .nav-tab-active {
+  background: var(--aurora-card-bg);
+  border-bottom-color: var(--aurora-card-bg);
+  color: var(--aurora-text);
+}
+
+/* Notices --------------------------------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .notice,
+html.aurora-dark.aurora-ready #wpbody-content div.updated,
+html.aurora-dark.aurora-ready #wpbody-content div.error {
+  background: var(--aurora-card-bg);
+  color: var(--aurora-text);
+}
+
+/* Code ------------------------------------------------------------------ */
+html.aurora-dark.aurora-ready #wpbody-content code,
+html.aurora-dark.aurora-ready #wpbody-content kbd,
+html.aurora-dark.aurora-ready #wpbody-content pre {
+  background: var(--aurora-bg-subtle);
+  color: var(--aurora-text);
+}
+
+/* Tablenav / pagination / filters --------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .tablenav,
+html.aurora-dark.aurora-ready #wpbody-content .subsubsub,
+html.aurora-dark.aurora-ready #wpbody-content .tablenav .displaying-num {
+  color: var(--aurora-text-muted);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .tablenav-pages a,
+html.aurora-dark.aurora-ready #wpbody-content .pagination-links a {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+/* Screen meta (Help / Screen Options pull-down tabs) -------------------- */
+html.aurora-dark.aurora-ready #screen-meta,
+html.aurora-dark.aurora-ready #screen-meta-links .show-settings,
+html.aurora-dark.aurora-ready #contextual-help-wrap,
+html.aurora-dark.aurora-ready #screen-options-wrap {
+  background: var(--aurora-card-bg);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+/* Form tables (settings pages) ----------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content .form-table th,
+html.aurora-dark.aurora-ready #wpbody-content .form-table td {
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+/* Horizontal rules & misc dividers ------------------------------------- */
+html.aurora-dark.aurora-ready #wpbody-content hr,
+html.aurora-dark.aurora-ready #wpbody-content .wp-header-end {
+  border-color: var(--aurora-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * WordPress Updates page (update-core.php) — boxed "card" layout.
+ * native-enhance.js wraps each section (Current version, Plugins, Themes)
+ * into a .aurora-native-card div; these rules give those cards the same
+ * surface look as the dashboard cards, plus a clean title and accent button.
+ * Scoped to the updates page body class so it can't affect other screens.
+ * ------------------------------------------------------------------------ */
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .wrap > h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .wrap > p {
+  color: var(--aurora-text-muted);
+  font-size: 0.875rem;
+  margin: 0 0 20px;
+}
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .aurora-native-card {
+  background: var(--aurora-card-bg);
+  border: 1px solid var(--aurora-card-border);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .aurora-native-card h2 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0 0 18px;
+  color: var(--aurora-text);
+  border: 0;
+  padding-top: 0;
+}
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .aurora-native-card h2.response {
+  font-size: 1.15rem;
+}
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .aurora-native-card .button {
+  background: transparent;
+  border: 1px solid var(--aurora-accent);
+  color: var(--aurora-accent);
+  border-radius: 8px;
+  padding: 7px 18px;
+  font-weight: 500;
+  height: auto;
+  box-shadow: none;
+  text-shadow: none;
+}
+html.aurora-dark.aurora-ready body.update-core-php #wpbody-content .aurora-native-card .button:hover {
+  background: var(--aurora-accent-soft);
+}
+
+/* ---------------------------------------------------------------------------
+ * Modals & popups (media library, plugin/theme install details) — these are
+ * Backbone/thickbox views appended to <body>, outside #wpbody-content, so
+ * every rule above misses them entirely. Scoped to html.aurora-dark only
+ * (no #wpbody-content ancestor requirement) since that's the only anchor
+ * available at body level.
+ * ------------------------------------------------------------------------ */
+html.aurora-dark.aurora-ready .media-modal,
+html.aurora-dark.aurora-ready .media-frame,
+html.aurora-dark.aurora-ready .media-frame-title,
+html.aurora-dark.aurora-ready .media-frame-router,
+html.aurora-dark.aurora-ready .media-frame-content,
+html.aurora-dark.aurora-ready .media-frame-toolbar,
+html.aurora-dark.aurora-ready .media-sidebar,
+html.aurora-dark.aurora-ready #TB_window,
+html.aurora-dark.aurora-ready #TB_ajaxContent,
+html.aurora-dark.aurora-ready .plugin-details-modal,
+html.aurora-dark.aurora-ready .plugin-install-php .plugin-card {
+  background: var(--aurora-card-bg);
+  color: var(--aurora-text);
+  border-color: var(--aurora-card-border);
+}
+
+html.aurora-dark.aurora-ready .media-modal h1,
+html.aurora-dark.aurora-ready .media-modal h2,
+html.aurora-dark.aurora-ready .media-modal h3,
+html.aurora-dark.aurora-ready .media-modal label,
+html.aurora-dark.aurora-ready .media-frame-title h1,
+html.aurora-dark.aurora-ready #TB_ajaxContent,
+html.aurora-dark.aurora-ready #TB_ajaxContent p,
+html.aurora-dark.aurora-ready #TB_ajaxContent h1,
+html.aurora-dark.aurora-ready .plugin-card-top,
+html.aurora-dark.aurora-ready .plugin-card .name,
+html.aurora-dark.aurora-ready .plugin-card .desc {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .media-frame-menu,
+html.aurora-dark.aurora-ready .media-menu,
+html.aurora-dark.aurora-ready .attachments-browser .media-toolbar,
+html.aurora-dark.aurora-ready .media-sidebar,
+html.aurora-dark.aurora-ready .plugin-card-bottom {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+}
+
+html.aurora-dark.aurora-ready .attachments-browser .attachments,
+html.aurora-dark.aurora-ready .media-frame-content {
+  background: var(--aurora-app-bg-solid);
+}
+
+html.aurora-dark.aurora-ready .media-modal input,
+html.aurora-dark.aurora-ready .media-modal textarea,
+html.aurora-dark.aurora-ready .media-modal select,
+html.aurora-dark.aurora-ready #TB_ajaxContent input,
+html.aurora-dark.aurora-ready #TB_ajaxContent textarea,
+html.aurora-dark.aurora-ready #TB_ajaxContent select {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .media-modal-backdrop,
+html.aurora-dark.aurora-ready #TB_overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* Plugin/theme card grids on plugins.php / plugin-install.php / themes.php */
+html.aurora-dark.aurora-ready #wpbody-content .theme-browser .theme,
+html.aurora-dark.aurora-ready #wpbody-content .plugin-card {
+  background: var(--aurora-card-bg);
+  border-color: var(--aurora-card-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .theme-browser .theme .theme-name,
+html.aurora-dark.aurora-ready #wpbody-content .theme-browser .theme .theme-actions {
+  background: var(--aurora-card-bg);
+  color: var(--aurora-text);
+  border-color: var(--aurora-card-border);
+}
+
+/* ---------------------------------------------------------------------------
+ * Block editor (Gutenberg) chrome — the top toolbar/title bar and the
+ * right-hand Post/Block settings sidebar. The actual editing canvas
+ * (.interface-interface-skeleton__content, the white "page" itself) is
+ * deliberately left native/white — it's a WYSIWYG preview of the live,
+ * light-themed page, not admin chrome, so it shouldn't follow the theme.
+ * Everything surrounding it does, matching every other page's framing
+ * (shell-frame.css gives .interface-interface-skeleton itself the card
+ * background/border/radius; this just covers what's inside it).
+ * ------------------------------------------------------------------------ */
+html.aurora-dark.aurora-ready .editor-header {
+  background: var(--aurora-frame-bg);
+  border-bottom: 1px solid var(--aurora-frame-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .editor-header .components-button,
+html.aurora-dark.aurora-ready .editor-header .editor-post-title__input,
+html.aurora-dark.aurora-ready .editor-header .editor-document-bar,
+html.aurora-dark.aurora-ready .editor-header .editor-document-bar__title {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .editor-header .components-button:hover {
+  background: var(--aurora-bg-subtle);
+}
+
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar {
+  background: var(--aurora-frame-bg);
+  border-left: 1px solid var(--aurora-frame-border);
+  color: var(--aurora-text);
+}
+
+/* .interface-complementary-area (the actual Post/Block settings panel) is
+   a nested child with its own explicit white background — the outer
+   __sidebar rule above doesn't reach it, so without this the whole panel
+   still shows through white regardless of theme. */
+html.aurora-dark.aurora-ready .interface-complementary-area {
+  background: var(--aurora-frame-bg);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .components-panel,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .components-panel__body,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .editor-post-status,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .interface-complementary-area-header {
+  background: var(--aurora-frame-bg);
+  border-color: var(--aurora-frame-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .components-panel__body-title,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar label {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar input,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar select,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar textarea,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .components-select-control__input,
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .components-text-control__input {
+  background: var(--aurora-bg-subtle);
+  border-color: var(--aurora-border);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready .interface-interface-skeleton__sidebar .components-button {
+  color: var(--aurora-text);
+}
+
+/* Font Library (font-library.php) --------------------------------------
+ * WP 6.5+ built this on @wordpress/components' Card/Modal primitives
+ * ("boot-layout" wrapper) instead of classic postbox markup — its own
+ * always-white background isn't reached by the postbox/card rules above,
+ * which left light text sitting on a white panel (invisible) inside an
+ * otherwise-dark-framed page. Emotion-generated hash classes on some of
+ * this screen's inner elements (e.g. "css-qi2azi") are unstable across WP
+ * builds and deliberately not targeted here — only the screen's own
+ * stable, hand-authored class names are. */
+html.aurora-dark.aurora-ready #wpbody-content .boot-layout-container,
+html.aurora-dark.aurora-ready #wpbody-content .boot-layout__stage,
+html.aurora-dark.aurora-ready #wpbody-content .admin-ui-page,
+html.aurora-dark.aurora-ready #wpbody-content .admin-ui-navigable-region,
+html.aurora-dark.aurora-ready #wpbody-content .admin-ui-page__header,
+html.aurora-dark.aurora-ready #wpbody-content .font-library-page__tab-panel,
+html.aurora-dark.aurora-ready #wpbody-content .font-library__tabpanel-layout,
+html.aurora-dark.aurora-ready #wpbody-content .font-library__footer {
+  background: var(--aurora-card-bg);
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .admin-ui-page__header-title,
+html.aurora-dark.aurora-ready #wpbody-content .font-library__fonts-title {
+  color: var(--aurora-text);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .font-library-page__tablist {
+  border-color: var(--aurora-card-border);
+}
+
+html.aurora-dark.aurora-ready #wpbody-content .font-library__fonts-list-item,
+html.aurora-dark.aurora-ready #wpbody-content .font-library__font-card {
+  background: var(--aurora-card-bg);
+  border-color: var(--aurora-card-border);
+  color: var(--aurora-text);
+}
+
+/* Site Health (site-health.php) is left running WordPress core's own test
+ * logic rather than reimplemented — its Status tab async checks hit core's
+ * own /wp-site-health/v1/tests/* REST routes, and third-party plugins can
+ * add their own checks via the site_status_tests filter, so reproducing it
+ * risks both drifting from core and silently dropping other plugins'
+ * checks. Only the framing/theming is Aurora's, same "frame native content"
+ * treatment as the block editor above.
+ *
+ * Three of its own elements paint a hardcoded white/off-white background
+ * that the generic #wpbody-content light-text cascade doesn't reach,
+ * leaving light text unreadable against it — the same "boot-layout" pattern
+ * fixed above, just a different screen. */
+html.aurora-dark.aurora-ready #wpbody-content .health-check-header,
+html.aurora-dark.aurora-ready #wpbody-content .health-check-accordion-panel {
+  background: var(--aurora-card-bg);
+}
+html.aurora-dark.aurora-ready #wpbody-content .health-check-accordion-trigger {
+  background: var(--aurora-bg-subtle);
+  color: var(--aurora-text);
+}
+/* The Security/Performance category pill inside each trigger row keeps its
+ * own dark text color (readable against the trigger's original near-white
+ * background) — needs to flip to light along with the trigger's background
+ * above, or it becomes unreadable in the other direction. */
+html.aurora-dark.aurora-ready #wpbody-content .health-check-accordion-trigger .badge {
+  color: var(--aurora-text);
+}

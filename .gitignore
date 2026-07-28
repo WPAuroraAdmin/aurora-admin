@@ -1,0 +1,8 @@
+app/node_modules/
+app/dist/
+dist/
+wporg-submission/
+admin/src/Licensing/integrity-manifest.json
+*.log
+.DS_Store
+Thumbs.db

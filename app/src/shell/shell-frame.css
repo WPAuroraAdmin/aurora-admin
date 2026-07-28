@@ -1,0 +1,458 @@
+/*
+ * The ONLY global stylesheet in the plugin. Every rule here either defines
+ * an --aurora-* theme variable or targets a specific WordPress structural ID
+ * to frame the native content. No element/tag resets, no utility classes —
+ * so it cannot leak onto or restyle WordPress's own page content the way the
+ * old plugin's Tailwind preflight did.
+ *
+ * Theme colors live here as plain CSS variables we fully control. Dark mode
+ * is a single class on <html> (.aurora-dark) that swaps the variable values.
+ */
+
+/* Palette carried over from the original plugin's design tokens: a zinc
+   neutral scale with a blue/indigo accent, large rounded surfaces. */
+:root {
+  --aurora-sidebar-w: 264px;
+  --aurora-toolbar-h: 56px;
+  /* Space between the sidebar card and the browser's left/top/bottom
+     edges (Sidebar.vue) — the toolbar and #wpcontent offsets below add
+     the same amount so nothing overlaps the floating sidebar. */
+  --aurora-sidebar-gap: 16px;
+  /* Breathing room between page content and the right browser edge. */
+  --aurora-gutter-r: 44px;
+
+  /* Corner-radius scale, one notch rounder across the UI — tune here and
+     every surface follows (all radii are tokenized onto this scale). */
+  --aurora-radius-sm: 10px;   /* chips, badges, small/icon controls */
+  --aurora-radius-md: 14px;   /* buttons, inputs, search, list rows */
+  --aurora-radius-lg: 20px;   /* cards, panels, larger buttons */
+  --aurora-radius-xl: 28px;   /* page frames: content card, dashboard, sidebar, editor */
+
+  /* Light theme */
+  --aurora-app-bg: #fafafa;        /* zinc-50  */
+  /* Flat fallback for the handful of consumers that need a solid color
+     (--aurora-app-bg itself may be a gradient once a theme preset applies). */
+  --aurora-app-bg-solid: #fafafa;
+  --aurora-bg: #ffffff;            /* frame    */
+  --aurora-card-bg: #fafafa;       /* zinc-50  */
+  /* Dashboard cards specifically (AuroraCard.vue) — a step further from
+     --aurora-frame-bg than --aurora-card-bg so they read as distinct
+     surfaces against the Dashboard's own frame, not a near-identical tone. */
+  --aurora-card-bg-deep: #f0f0f2;
+  --aurora-bg-subtle: #f4f4f5;     /* zinc-100 */
+  --aurora-text: #18181b;          /* zinc-900 */
+  --aurora-text-muted: #71717a;    /* zinc-500 */
+  --aurora-border: #e4e4e7;        /* zinc-200 */
+  --aurora-card-border: #ececef;
+  --aurora-frame-bg: #ffffff;      /* native-page content panel */
+  --aurora-frame-border: #e0e0e3;
+  --aurora-accent: rgb(71 114 250);
+  --aurora-accent-soft: rgb(71 114 250 / 0.1);
+  --aurora-accent-text: #ffffff;
+
+  /* Overridden by the font-picker setting (see SiteShell.vue::applyFontFamily);
+     this is the fallback when no Google Font has been chosen. */
+  --aurora-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Minified menu: the toolbar's collapse button toggles this class; every
+   layout offset derives from --aurora-sidebar-w, so this one override
+   reflows the toolbar and content automatically. */
+html.aurora-collapsed {
+  --aurora-sidebar-w: 68px;
+}
+
+html.aurora-dark {
+  /* Dark theme — the immersive near-black look of the original */
+  --aurora-app-bg: #09090b;        /* zinc-950 */
+  --aurora-app-bg-solid: #09090b;
+  --aurora-bg: #18181b;            /* zinc-900 frame */
+  --aurora-card-bg: #1f1f23;       /* slightly elevated */
+  --aurora-card-bg-deep: #131316;
+  --aurora-bg-subtle: #27272a;     /* zinc-800 */
+  --aurora-text: #f4f4f5;          /* zinc-100 */
+  --aurora-text-muted: #a1a1aa;    /* zinc-400 */
+  --aurora-border: #27272a;        /* zinc-800 */
+  --aurora-card-border: #2e2e33;
+  --aurora-frame-bg: #1c1c20;      /* slightly elevated panel */
+  --aurora-frame-border: #34343b;
+  --aurora-accent: rgb(125 158 255);
+  --aurora-accent-soft: rgb(125 158 255 / 0.14);
+}
+
+/* --- Framing: only applies once the Vue shell has signalled ready --- */
+
+html.aurora-ready,
+html.aurora-ready body {
+  /* !important: WP core ships `body.js.block-editor-page { background:
+     #fff }` on the block editor, which has higher specificity (two
+     classes) than this selector (one) despite this having more type
+     selectors — CSS specificity compares class count before type count.
+     Without !important that rule wins and paints body solid white,
+     hiding the gradient completely on that page (everywhere else this
+     conflict doesn't exist, so it was never needed until now). */
+  background: var(--aurora-app-bg) !important;
+  /* Fixed so the gradient stays pinned to the viewport instead of
+     scrolling with document height — the sidebar/toolbar are also
+     position:fixed and paint no background of their own (see
+     Sidebar.vue/Toolbar.vue), so this one gradient plane has to line up
+     with them at every scroll position to read as a single unified
+     background instead of a seam between "sidebar" and "page". */
+  background-attachment: fixed;
+  font-family: var(--aurora-font-family);
+  /* The sidebar/toolbar are position:fixed and every page's real content
+     now scrolls internally within its own frame (#wpbody-content or
+     .aurora-dashboard-frame, both capped to the viewport with their own
+     overflow-y: auto below) — so the document itself is never meant to
+     scroll. Some native pages (Add Plugins' plugin-card grid is the one
+     that surfaced this) leave a huge dead scrollable area at the document
+     level — a WP/browser quirk around lazily-rendered content reserving
+     scroll space against the page rather than the inner container — which
+     showed up as being able to scroll the whole window down to a big
+     empty gap below the frame. Locking the document's own scroll removes
+     that dead space outright, regardless of what's causing it. */
+  overflow: hidden;
+}
+
+/* !important here defeats WordPress's own responsive #wpcontent margin
+   rules (.auto-fold / folded menu states live in media queries at equal
+   specificity). This is positioning the frame, not restyling content.
+   The toolbar clearance lives here (on #wpcontent, which holds everything)
+   rather than on #wpbody, so content rendered above #wpbody — like the
+   takeover dashboard — also clears the fixed toolbar. */
+html.aurora-ready #wpcontent {
+  margin-left: calc(var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2) !important;
+  padding-left: 0 !important;
+  padding-top: var(--aurora-toolbar-h);
+  transition: margin-left 0.2s ease;
+}
+
+/* The block editor (Gutenberg) doesn't live inside #wpcontent's normal
+   box model — it renders its own fixed, full-viewport root, completely
+   independent of the margin-left above. Left unchecked it spans the full
+   viewport and renders underneath the (higher z-index) sidebar and
+   toolbar. Framed the same way #wpbody-content is everywhere else — same
+   insets, same card background/border/radius — just expressed as
+   fixed-position offsets instead of margin, since this element can't
+   participate in normal document flow.
+
+   Two different pages, two different fixed roots, both matched here:
+    - post.php/post-new.php: .interface-interface-skeleton itself is
+      position:fixed, inset:0.
+    - site-editor.php: .interface-interface-skeleton is only
+      position:relative, nested inside #site-editor, which is the actual
+      position:fixed, inset:0 element there — the rule below with
+      "#site-editor .interface-interface-skeleton" resets the nested one
+      back to a plain unpositioned child so the two frames don't stack. */
+html.aurora-ready .interface-interface-skeleton,
+html.aurora-ready #site-editor {
+  top: calc(var(--aurora-toolbar-h) + 16px) !important;
+  left: calc(var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2 + 24px) !important;
+  right: var(--aurora-gutter-r) !important;
+  bottom: 24px !important;
+  /* WP core's own .edit-site class (also present on #site-editor) sets
+     height: 100vh. A position:fixed box with top, height, AND bottom all
+     specified is over-constrained — per spec, 'bottom' is then silently
+     recomputed from top+height instead of honoring the value here, which
+     is exactly why the frame ran past the bottom of the viewport instead
+     of stopping at the inset above. Forcing height back to auto lets
+     top+bottom actually determine the box's size again. */
+  height: auto !important;
+  background: var(--aurora-frame-bg);
+  /* No border — an asymmetric one (3 sides, one "none") combined with
+     border-radius and this element's sub-pixel calc()-derived fixed
+     position produced a visible double-edge rendering artifact right at
+     the rounded corners. The background/gradient contrast alone is
+     enough to read as a distinct surface without it. */
+  border-radius: var(--aurora-radius-xl);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: left 0.2s ease;
+  box-sizing: border-box;
+  /* border-radius alone doesn't clip children — Gutenberg's own white
+     canvas background ran straight past the rounded bottom corners as a
+     hard square edge without this. Floating UI (block toolbars, popovers)
+     portals to document.body rather than nesting here, so this doesn't
+     clip anything that needs to escape the frame. */
+  overflow: hidden;
+}
+#site-editor .interface-interface-skeleton {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding-top: 0 !important;
+  overflow: visible !important;
+  width: 100%;
+  height: 100%;
+}
+
+html.aurora-ready #wpbody-content {
+  background: var(--aurora-frame-bg);
+  color: var(--aurora-text);
+  border: 1px solid var(--aurora-frame-border);
+  border-radius: var(--aurora-radius-xl);
+  /* A real soft shadow (not the old barely-there 0.06 one) so the rounded
+     card edge reads against dense, full-bleed page content — otherwise the
+     frame is technically rounded but visually invisible except on sparse
+     pages. Follows the border-radius, defining the card shape. */
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  margin: 16px var(--aurora-gutter-r) 24px 24px;
+  padding: 32px;
+  min-height: calc(100vh - var(--aurora-toolbar-h) - 40px);
+  /* Cap the card's own height to whatever's left below the toolbar and let
+     *it* scroll internally, instead of growing to fit tall native pages
+     (Comments, Plugins, Add User, Settings, Activity Log, Database
+     Explorer, ...) and forcing the whole document to scroll — the sidebar/
+     toolbar are fixed, so a tall #wpbody-content just meant a lot of empty
+     scroll distance below the fold with nothing visibly moving except the
+     content. Same fix as the taskbar-present case below, just unconditional. */
+  max-height: calc(100vh - var(--aurora-toolbar-h) - 40px);
+  overflow-y: auto;
+  /* Chrome's scroll anchoring tries to keep whatever's in view visually
+     stable when content shifts above it. Several native pages (Add Plugins'
+     plugin-card grid, most visibly) render their real content via JS well
+     after the initial paint, inserting it above stuff that was already
+     visible in this now-scrollable box — anchoring then "corrects" by
+     jumping scrollTop down to compensate, landing the page scrolled to
+     the middle/bottom on load instead of the top. Opting this container
+     out of anchoring is the standard fix for that class of bug. */
+  overflow-anchor: none;
+  box-sizing: border-box;
+  /* WP core sets #wpbody-content { float: left; width: 100% }, which (with
+     box-sizing left alone) ignores the margin above and overflows past the
+     right edge by margin-left + margin-right. Force it back to shrink-to-fit
+     so the margin is actually respected. */
+  float: none;
+  width: auto;
+}
+
+/* Gutenberg renders in its own fixed skeleton. The regular #wpbody-content
+   wrapper still exists on post-new.php/post.php, but it is inert; if framed
+   like normal native pages, it appears as a stray empty pill above the editor. */
+html.aurora-ready body.block-editor-page #wpbody-content,
+html.aurora-ready body.post-new-php #wpbody-content,
+html.aurora-ready body.post-php #wpbody-content {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+/* Theme installer preview ("Add Themes" > click a theme > full "Preview &
+   Install" overlay, theme-install.php). WP core's own .wp-full-overlay
+   component (shared with the Customizer, but only .theme-install-overlay
+   specifically is touched here — customize.php is out of scope) is a
+   true-viewport fixed overlay by design, so left unstyled it covers
+   Aurora's sidebar/toolbar entirely. Reframed the same way the block
+   editor is above: shrink the overlay's own box to the frame's insets,
+   then independently reposition its two POSITION:FIXED children (sidebar,
+   main) to match — fixed descendants are NOT relative to an ancestor's
+   padding box the way absolutely-positioned ones are, so the overlay's own
+   inset alone doesn't move them; each needs the same left/top/bottom math
+   applied directly. margin-left on .expanded/.collapsed mirrors WP core's
+   own three breakpoints (themes.css) with Aurora's frame offset added on
+   top, so the sidebar collapse/expand slide animation keeps working
+   unmodified — only the resting position changed, not the transition.
+
+   One more WP core mechanism to counteract: opening the overlay adds
+   body.full-overlay-active, and core's own CSS sets
+   `body.full-overlay-active { visibility: hidden }` with only
+   `.theme-install-overlay` (and #customize-container) set back to
+   visible — intended to hide the native admin chrome underneath, which
+   normally doesn't matter since core's own sidebar/toolbar are redundant
+   once covered anyway. Aurora's shell inherits that hidden visibility
+   too (it's nested in body), which is exactly what silently erased the
+   sidebar/toolbar entirely instead of just having them covered. Since
+   descendants can locally override an inherited `visibility: hidden`
+   back to visible, one rule undoes it for Aurora's own root only —
+   everything else under body stays hidden, harmless since it's covered
+   by the overlay's insets anyway. */
+body.full-overlay-active #aurora-admin-shell-root {
+  visibility: visible !important;
+}
+
+html.aurora-ready .theme-install-overlay {
+  top: calc(var(--aurora-toolbar-h) + 16px) !important;
+  right: var(--aurora-gutter-r) !important;
+  bottom: 24px !important;
+  /* WP core's own .wp-full-overlay sets height: 100% — combined with top
+     AND bottom both set here, that's the exact same over-constrained box
+     as .interface-interface-skeleton above: per spec 'bottom' silently
+     loses to the explicit height, so the box ran past the true viewport
+     edge instead of stopping at this inset. Same fix. */
+  height: auto !important;
+}
+html.aurora-ready .theme-install-overlay.expanded {
+  margin-left: calc(300px + var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2 + 24px) !important;
+}
+html.aurora-ready .theme-install-overlay.collapsed {
+  margin-left: calc(var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2 + 24px) !important;
+}
+@media screen and (min-width: 1667px) {
+  html.aurora-ready .theme-install-overlay.expanded {
+    margin-left: calc(18% + var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2 + 24px) !important;
+  }
+}
+@media screen and (min-width: 3333px) {
+  html.aurora-ready .theme-install-overlay.expanded {
+    margin-left: calc(600px + var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2 + 24px) !important;
+  }
+}
+
+html.aurora-ready .theme-install-overlay .wp-full-overlay-sidebar {
+  left: calc(var(--aurora-sidebar-w) + var(--aurora-sidebar-gap) * 2 + 24px) !important;
+  top: calc(var(--aurora-toolbar-h) + 16px) !important;
+  bottom: 24px !important;
+  height: auto !important;
+  border-top-left-radius: var(--aurora-radius-xl);
+}
+html.aurora-ready .theme-install-overlay .wp-full-overlay-main {
+  top: 0 !important;
+  border-top-right-radius: var(--aurora-radius-xl);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* The Dashboard bypasses #wpbody-content (DashboardTakeover.php renders
+   it into a separate sibling — see dashboardFrame.js), so it never got the
+   card frame every other page has. dashboardFrame.js wraps the dashboard's
+   mount point in this div to give it the same treatment. */
+.aurora-dashboard-frame {
+  background: var(--aurora-frame-bg);
+  border: 1px solid var(--aurora-frame-border);
+  border-radius: var(--aurora-radius-xl);
+  /* Match #wpbody-content's shadow so the dashboard's rounded card edge
+     reads the same way — the dashboard is dense and full-bleed, so the old
+     0.06 shadow left it looking un-rounded. */
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  margin: 16px var(--aurora-gutter-r) 24px 24px;
+  box-sizing: border-box;
+  /* Same unconditional height cap as #wpbody-content's base rule — this
+     element never got it, since the Dashboard bypasses #wpbody-content
+     entirely (a separate sibling — see dashboardFrame.js). Once html/body
+     were locked to overflow:hidden (to kill a phantom document-level
+     scrollbar on another page), the dashboard's content past the first
+     ~1500px became completely unreachable: no internal scroll here, and
+     no document
+     scroll left to fall back on either. */
+  max-height: calc(100vh - var(--aurora-toolbar-h) - 40px);
+  /* The frame itself clips (rounded corners) and lays out as a column; the
+     actual scrolling happens on the inner app-root (see the shared scroll
+     rule below), so the native scrollbar lives INSIDE the rounded card
+     rather than squaring off its right corners. The 12px padding is the
+     gutter that keeps the scrollbar clear of the corner radius. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+/* Custom admin notices (Notices::render_for_dashboard(), reparented in
+   here by dashboardFrame.js) — native-dark.css already themes .notice
+   elsewhere via #wpbody-content, but that stylesheet isn't loaded on the
+   Dashboard at all (Shell::is_own_page() treats index.php as one of
+   Aurora's own pages), so it needs its own copy of the same treatment
+   here instead. */
+#aurora-admin-dashboard-notices:empty {
+  display: none;
+}
+#aurora-admin-dashboard-notices .notice {
+  background: var(--aurora-card-bg);
+  color: var(--aurora-text);
+  margin: 16px 20px 0;
+}
+
+/* The settings page renders its own two boxed panels, so drop the outer
+   content frame there — leaving just those panels on the dark backdrop.
+   No background here: #wpbody-content is inset from the sidebar/gutter,
+   not the full viewport, so painting var(--aurora-app-bg) on it computes
+   its own independent (and visibly mismatched) gradient instance instead
+   of sharing the one fixed gradient plane painted on html/body. */
+html.aurora-ready body.toplevel_page_aurora-admin #wpbody-content {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- Scroll INSIDE the rounded frame -------------------------------------
+   A single element can't both scroll and keep its own rounded corners: the
+   native scrollbar sits in the top/bottom-right corners and squares them
+   off. So the frame clips (overflow:hidden + border-radius) and its Aurora
+   app-root child becomes the real scroll container — the scrollbar then
+   lives inside the rounded card, inset by the frame's 12px padding so it
+   clears the corner radius.
+
+   `:has()` limits the #wpbody-content half to Aurora's own hijacked pages
+   (their mount div is a direct #aurora-admin-*-root child); native WP pages
+   keep their normal single-layer 32px-padded scroll, untouched. Content
+   padding is split 12px (frame) + 20px (scroller) so it still totals the
+   original 32px — pages that assume that (e.g. AppListShell's -32px bleed)
+   keep working. */
+/* `body:not(.toplevel_page_aurora-admin)` excludes the Settings page — it
+   deliberately drops the frame and manages its own -32px/scroll-as-a-whole
+   layout (see Settings.vue), so the two-layer treatment must not touch it. */
+html.aurora-ready body:not(.toplevel_page_aurora-admin) #wpbody-content:has(> [id^="aurora-admin-"][id$="-root"]) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+.aurora-dashboard-frame > [id^="aurora-admin-"][id$="-root"],
+html.aurora-ready body:not(.toplevel_page_aurora-admin) #wpbody-content > [id^="aurora-admin-"][id$="-root"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+/* The hijacked/list pages need their content padding on the scroller (the
+   dashboard's own content already pads itself). */
+html.aurora-ready body:not(.toplevel_page_aurora-admin) #wpbody-content > [id^="aurora-admin-"][id$="-root"] {
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* --- Themed scrollbars -----------------------------------------------------
+   Skin every scrollbar inside the Aurora shell in a translucent shade of the
+   active theme's accent (derived from --aurora-accent, so it tracks whatever
+   preset is selected) instead of the OS default. The plain accent-soft token
+   is a fallback for engines without color-mix; the 3px transparent border +
+   background-clip:padding-box keeps the thumb slim with a little breathing
+   room around it. */
+html.aurora-ready {
+  scrollbar-width: thin;
+  scrollbar-color: var(--aurora-accent-soft) transparent;
+  scrollbar-color: color-mix(in srgb, var(--aurora-accent) 55%, transparent) transparent;
+}
+html.aurora-ready ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+html.aurora-ready ::-webkit-scrollbar-track,
+html.aurora-ready ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+html.aurora-ready ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  background-color: var(--aurora-accent-soft);
+  background-color: color-mix(in srgb, var(--aurora-accent) 45%, transparent);
+}
+html.aurora-ready ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--aurora-accent);
+  background-color: color-mix(in srgb, var(--aurora-accent) 72%, transparent);
+}
+
+/*
+ * Native WordPress pages are fully dark-themed by a dedicated stylesheet
+ * (admin/assets/native-dark.css), enqueued only on native pages and gated
+ * on dark mode. It restyles WP's postboxes, forms, tables, buttons, etc.
+ * Keeping that large surface in one isolated, native-only file means it
+ * can never leak onto Aurora's own pages or affect light mode.
+ */
