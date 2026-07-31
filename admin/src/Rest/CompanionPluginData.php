@@ -4,42 +4,42 @@ namespace AuroraAdmin\Rest;
 defined("ABSPATH") || exit();
 
 /**
- * Installs Aurora's standalone companion plugins (File Manager, Database
- * Explorer, Site Backup, and any future ones) — each split out of Aurora
- * Admin either because WordPress.org's Plugin Directory policy doesn't
- * accept that category of functionality in a directory-listed plugin
- * (File Manager, confirmed via two rejections), or proactively to reduce
- * that same risk (Database Explorer, Site Backup — see
- * PROJECT_STATUS.md's per-plugin sections for the full history). Rather
- * than a bare download link, this wraps WP_Upgrader/Plugin_Upgrader — the
- * same core API the native Plugins > Add New "Install Now" button and the
- * Uploads tab both use — pointed at a fixed, hardcoded HTTPS zip URL per
- * plugin (never client-supplied, so there's no SSRF surface here: the
- * install target isn't user input).
+ * Discovers and installs Aurora's standalone companion plugins (File
+ * Manager, Database Explorer, Site Backup, and any future ones) — each
+ * split out of Aurora Admin either because WordPress.org's Plugin
+ * Directory policy doesn't accept that category of functionality in a
+ * directory-listed plugin (File Manager, confirmed via two rejections), or
+ * proactively to reduce that same risk (Database Explorer, Site Backup —
+ * see PROJECT_STATUS.md's per-plugin sections for the full history).
+ *
+ * The available-modules list is no longer hardcoded here. Instead it's
+ * fetched from a small JSON manifest hosted at MANIFEST_URL and cached in
+ * a transient — adding, renaming, or removing a companion plugin is then
+ * just an edit to that one remote file, no plugin release required. If
+ * the manifest is unreachable, empty, or malformed, this fails to an empty
+ * list rather than erroring, so the Modules screen simply shows no cards.
+ *
+ * Every zip_url pulled from the manifest is verified to resolve to
+ * MANIFEST_HOST over HTTPS before it's ever passed to the installer —
+ * the manifest can only ever point installs at Aurora's own domain, never
+ * an arbitrary host, even if a manifest entry were malformed or tampered
+ * with in transit.
+ *
+ * Installation itself wraps WP_Upgrader/Plugin_Upgrader — the same core
+ * API the native Plugins > Add New "Install Now" button and the Uploads
+ * tab both use — so it inherits the same WP_Filesystem credential
+ * handling (a host requiring FTP/SSH credentials for direct file writes
+ * surfaces that as a normal WP_Error here, not a fatal).
  */
 class CompanionPluginData
 {
-  // Add an entry here for each companion plugin. The REST routes below are
-  // generated per-slug (e.g. /companion-plugins/file-manager/status), so a
-  // new companion plugin only needs a new entry here plus a matching
-  // settingsConfig.js field — no new PHP route-registration code.
-  const PLUGINS = [
-    "file-manager" => [
-      "zip_url" => "https://auroraadmin.dev/aurora-file-manager.zip",
-      "plugin_file" => "aurora-file-manager/aurora-file-manager.php",
-      "label" => "Aurora File Manager",
-    ],
-    "database-explorer" => [
-      "zip_url" => "https://auroraadmin.dev/aurora-database-explorer.zip",
-      "plugin_file" => "aurora-database-explorer/aurora-database-explorer.php",
-      "label" => "Aurora Database Explorer",
-    ],
-    "site-backup" => [
-      "zip_url" => "https://auroraadmin.dev/aurora-site-backup.zip",
-      "plugin_file" => "aurora-site-backup/aurora-site-backup.php",
-      "label" => "Aurora Site Backup",
-    ],
-  ];
+  const MANIFEST_URL = "https://auroraadmin.dev/modules/modules.json";
+  const MANIFEST_HOST = "auroraadmin.dev";
+  const CACHE_KEY = "aurora_admin_companion_modules";
+  const CACHE_TTL = 12 * HOUR_IN_SECONDS;
+  // Short TTL for a failed/empty fetch, so a temporary outage on the
+  // manifest host doesn't leave the Modules screen empty for 12 hours.
+  const CACHE_TTL_EMPTY = 15 * MINUTE_IN_SECONDS;
 
   public function __construct()
   {
@@ -52,23 +52,100 @@ class CompanionPluginData
       return current_user_can("install_plugins") && current_user_can("activate_plugins");
     };
 
-    foreach (array_keys(self::PLUGINS) as $slug) {
-      register_rest_route("aurora-admin/v1", "/companion-plugins/{$slug}/status", [
-        "methods" => "GET",
-        "callback" => function () use ($slug) {
-          return self::status($slug);
-        },
-        "permission_callback" => $permission,
-      ]);
+    // One list endpoint (manifest metadata merged with local install
+    // status) instead of a fixed route per known plugin — the frontend no
+    // longer needs to know the set of slugs in advance.
+    register_rest_route("aurora-admin/v1", "/companion-plugins", [
+      "methods" => "GET",
+      "callback" => [self::class, "list_modules"],
+      "permission_callback" => $permission,
+    ]);
 
-      register_rest_route("aurora-admin/v1", "/companion-plugins/{$slug}/install", [
-        "methods" => "POST",
-        "callback" => function () use ($slug) {
-          return self::install($slug);
-        },
-        "permission_callback" => $permission,
-      ]);
+    register_rest_route("aurora-admin/v1", "/companion-plugins/(?P<slug>[a-z0-9\-]+)/install", [
+      "methods" => "POST",
+      "callback" => function ($request) {
+        return self::install($request->get_param("slug"));
+      },
+      "permission_callback" => $permission,
+    ]);
+  }
+
+  /**
+   * Fetches, validates, and caches the companion-plugin manifest. Returns
+   * an array keyed by slug; entries missing a required field are dropped
+   * rather than allowed through partially populated.
+   */
+  private static function get_manifest()
+  {
+    $cached = get_transient(self::CACHE_KEY);
+    if (is_array($cached)) {
+      return $cached;
     }
+
+    $modules = self::fetch_and_validate_manifest();
+    set_transient(self::CACHE_KEY, $modules, $modules ? self::CACHE_TTL : self::CACHE_TTL_EMPTY);
+    return $modules;
+  }
+
+  private static function fetch_and_validate_manifest()
+  {
+    $response = wp_remote_get(self::MANIFEST_URL, ["timeout" => 8]);
+    if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+      return [];
+    }
+
+    $entries = json_decode(wp_remote_retrieve_body($response), true);
+    if (!is_array($entries)) {
+      return [];
+    }
+
+    $modules = [];
+    foreach ($entries as $entry) {
+      $module = self::sanitize_entry($entry);
+      if ($module !== null) {
+        $modules[$module["slug"]] = $module;
+      }
+    }
+    return $modules;
+  }
+
+  private static function sanitize_entry($entry)
+  {
+    if (!is_array($entry)) {
+      return null;
+    }
+
+    $slug = isset($entry["slug"]) ? sanitize_key($entry["slug"]) : "";
+    $name = isset($entry["name"]) ? sanitize_text_field($entry["name"]) : "";
+    $plugin_file = isset($entry["plugin_file"]) ? sanitize_text_field($entry["plugin_file"]) : "";
+    $zip_url = isset($entry["zip"]) ? esc_url_raw($entry["zip"]) : "";
+    $description = isset($entry["description"]) ? sanitize_text_field($entry["description"]) : "";
+
+    if (!$slug || !$name || !$plugin_file || !$zip_url) {
+      return null;
+    }
+
+    // Every plugin_file is expected to be "slug-folder/slug-folder.php" —
+    // reject anything that isn't a plain relative plugin path (no "..",
+    // no leading slash), since this string is later passed straight to
+    // activate_plugin()/is_plugin_active().
+    if (strpos($plugin_file, "..") !== false || $plugin_file[0] === "/" || substr($plugin_file, -4) !== ".php") {
+      return null;
+    }
+
+    $host = wp_parse_url($zip_url, PHP_URL_HOST);
+    $scheme = wp_parse_url($zip_url, PHP_URL_SCHEME);
+    if ($scheme !== "https" || $host !== self::MANIFEST_HOST) {
+      return null;
+    }
+
+    return [
+      "slug" => $slug,
+      "name" => $name,
+      "description" => $description,
+      "plugin_file" => $plugin_file,
+      "zip_url" => $zip_url,
+    ];
   }
 
   private static function is_installed($plugin_file)
@@ -84,29 +161,40 @@ class CompanionPluginData
     return is_plugin_active($plugin_file);
   }
 
-  public static function status($slug)
+  /** GET /companion-plugins — manifest entries merged with local install/active status. */
+  public static function list_modules()
   {
     if (!function_exists("is_plugin_active")) {
       require_once ABSPATH . "wp-admin/includes/plugin.php";
     }
-    $plugin_file = self::PLUGINS[$slug]["plugin_file"];
-    return new \WP_REST_Response([
-      "installed" => self::is_installed($plugin_file),
-      "active" => self::is_installed($plugin_file) && self::is_active($plugin_file),
-    ], 200);
+
+    $modules = [];
+    foreach (self::get_manifest() as $module) {
+      $installed = self::is_installed($module["plugin_file"]);
+      $modules[] = [
+        "slug" => $module["slug"],
+        "name" => $module["name"],
+        "description" => $module["description"],
+        "installed" => $installed,
+        "active" => $installed && self::is_active($module["plugin_file"]),
+      ];
+    }
+
+    return new \WP_REST_Response($modules, 200);
   }
 
   /**
    * Installs (if not already present) and activates the given companion
-   * plugin. Uses Plugin_Upgrader::install() against the fixed zip URL — the
-   * exact same core class WordPress's own plugin-install.php uses, so it
-   * inherits the same WP_Filesystem credential handling (a host requiring
-   * FTP/SSH credentials for direct file writes will surface that as a
-   * normal WP_Error here, not a fatal).
+   * plugin. Uses Plugin_Upgrader::install() against the manifest-supplied,
+   * host-verified zip URL.
    */
   public static function install($slug)
   {
-    $plugin = self::PLUGINS[$slug];
+    $manifest = self::get_manifest();
+    if (!isset($manifest[$slug])) {
+      return new \WP_REST_Response(["success" => false, "message" => __("This module is no longer available.", "aurora-admin")], 404);
+    }
+    $plugin = $manifest[$slug];
     $plugin_file = $plugin["plugin_file"];
 
     if (self::is_installed($plugin_file)) {
@@ -117,7 +205,7 @@ class CompanionPluginData
         }
       }
       /* translators: %s: companion plugin name, e.g. "Aurora File Manager" */
-      return new \WP_REST_Response(["success" => true, "message" => sprintf(__("%s is installed and active.", "aurora-admin"), $plugin["label"])], 200);
+      return new \WP_REST_Response(["success" => true, "message" => sprintf(__("%s is installed and active.", "aurora-admin"), $plugin["name"])], 200);
     }
 
     require_once ABSPATH . "wp-admin/includes/class-wp-upgrader.php";
@@ -152,6 +240,6 @@ class CompanionPluginData
     }
 
     /* translators: %s: companion plugin name, e.g. "Aurora File Manager" */
-    return new \WP_REST_Response(["success" => true, "message" => sprintf(__("%s installed and activated.", "aurora-admin"), $plugin["label"])], 200);
+    return new \WP_REST_Response(["success" => true, "message" => sprintf(__("%s installed and activated.", "aurora-admin"), $plugin["name"])], 200);
   }
 }

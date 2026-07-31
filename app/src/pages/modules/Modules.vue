@@ -1,6 +1,5 @@
 <script setup>
-import { reactive, onMounted } from 'vue';
-import { companionPlugins } from './companionPlugins.js';
+import { ref, reactive, onMounted } from 'vue';
 
 const props = defineProps({
   serverData: { type: Object, required: true },
@@ -20,34 +19,44 @@ const api = (path, options = {}) =>
     return data;
   });
 
-// Per-plugin UI state, keyed by slug: { status: {installed,active}|null, busy, error }
-const state = reactive(
-  Object.fromEntries(companionPlugins.map((p) => [p.slug, { status: null, busy: false, error: '' }]))
-);
+// Fetched from the server (manifest metadata + local install/active status
+// merged), not a static list — a module with no manifest entry simply
+// never appears here.
+const modules = ref([]);
+const loading = ref(true);
+const loadError = ref('');
 
-const loadStatus = async (plugin) => {
+// Per-slug UI state: { busy, error }. Populated once modules load.
+const state = reactive({});
+
+const load = async () => {
+  loading.value = true;
+  loadError.value = '';
   try {
-    state[plugin.slug].status = await api(plugin.statusEndpoint);
-  } catch {
-    state[plugin.slug].status = { installed: false, active: false };
+    modules.value = await api('/companion-plugins');
+    for (const m of modules.value) {
+      if (!state[m.slug]) state[m.slug] = { busy: false, error: '' };
+    }
+  } catch (e) {
+    loadError.value = e.message || 'Could not check for available modules.';
+  } finally {
+    loading.value = false;
   }
 };
 
-onMounted(() => {
-  companionPlugins.forEach(loadStatus);
-});
+onMounted(load);
 
-const install = async (plugin) => {
-  const s = state[plugin.slug];
+const install = async (module) => {
+  const s = state[module.slug];
   if (s.busy) return;
   s.busy = true;
   s.error = '';
   try {
-    const result = await api(plugin.installEndpoint, { method: 'POST' });
+    const result = await api(`/companion-plugins/${module.slug}/install`, { method: 'POST' });
     if (!result.success) {
       s.error = result.message || 'Installation failed.';
     }
-    await loadStatus(plugin);
+    await load();
   } catch (e) {
     s.error = e.message || 'Installation failed.';
   } finally {
@@ -67,36 +76,37 @@ const install = async (plugin) => {
       </p>
     </header>
 
-    <div class="modules__grid">
-      <article v-for="p in companionPlugins" :key="p.slug" class="module-card">
+    <p v-if="loading" class="modules__status">Checking for available modules…</p>
+    <p v-else-if="loadError" class="modules__status modules__status--error">{{ loadError }}</p>
+    <p v-else-if="modules.length === 0" class="modules__status">
+      No modules are available right now. Check back later.
+    </p>
+
+    <div v-else class="modules__grid">
+      <article v-for="m in modules" :key="m.slug" class="module-card">
         <div class="module-card__top">
-          <span class="module-card__icon dashicons" :class="p.icon" />
-          <span
-            v-if="state[p.slug].status"
-            class="module-card__badge"
-            :class="{ 'is-active': state[p.slug].status.active }"
-          >
-            {{ state[p.slug].status.active ? 'Active' : state[p.slug].status.installed ? 'Installed' : 'Not installed' }}
+          <span class="module-card__icon dashicons dashicons-admin-plugins" />
+          <span class="module-card__badge" :class="{ 'is-active': m.active }">
+            {{ m.active ? 'Active' : m.installed ? 'Installed' : 'Not installed' }}
           </span>
         </div>
-        <h3 class="module-card__title">{{ p.label }}</h3>
-        <p class="module-card__desc">{{ p.description }}</p>
+        <h3 class="module-card__title">{{ m.name }}</h3>
+        <p class="module-card__desc">{{ m.description }}</p>
 
         <div class="module-card__action">
-          <div v-if="!state[p.slug].status" class="module-card__checking">Checking…</div>
-          <a v-else-if="state[p.slug].status.active" class="module-card__manage" :href="p.manageUrl">
-            Open {{ p.label }} →
+          <a v-if="m.active" class="module-card__manage" :href="`admin.php?page=aurora-${m.slug}`">
+            Open {{ m.name }} →
           </a>
           <template v-else>
             <button
               type="button"
               class="module-card__install"
-              :disabled="state[p.slug].busy"
-              @click="install(p)"
+              :disabled="state[m.slug]?.busy"
+              @click="install(m)"
             >
-              {{ state[p.slug].busy ? 'Installing…' : state[p.slug].status.installed ? 'Activate' : 'Install & Activate' }}
+              {{ state[m.slug]?.busy ? 'Installing…' : m.installed ? 'Activate' : 'Install & Activate' }}
             </button>
-            <p v-if="state[p.slug].error" class="module-card__error">{{ state[p.slug].error }}</p>
+            <p v-if="state[m.slug]?.error" class="module-card__error">{{ state[m.slug].error }}</p>
           </template>
         </div>
       </article>
@@ -112,6 +122,8 @@ const install = async (plugin) => {
 }
 .modules__head h1 { margin: 0; font-size: 1.45rem; line-height: 1.15; }
 .modules__lead { margin: 8px 0 0; color: var(--aurora-text-muted); font-size: 0.9rem; max-width: 640px; line-height: 1.6; }
+.modules__status { margin-top: 24px; font-size: 0.875rem; color: var(--aurora-text-muted); }
+.modules__status--error { color: #e5484d; }
 .modules__grid {
   margin-top: 24px; display: grid; gap: 16px;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -132,7 +144,6 @@ const install = async (plugin) => {
 .module-card__title { margin: 4px 0 0; font-size: 1rem; font-weight: 700; }
 .module-card__desc { margin: 0; font-size: 0.8125rem; color: var(--aurora-text-muted); line-height: 1.55; flex: 1; }
 .module-card__action { margin-top: 6px; }
-.module-card__checking { font-size: 0.8125rem; color: var(--aurora-text-muted); }
 .module-card__manage { font-size: 0.8125rem; font-weight: 600; color: var(--aurora-accent); text-decoration: none; }
 .module-card__manage:hover { text-decoration: underline; }
 .module-card__install {
