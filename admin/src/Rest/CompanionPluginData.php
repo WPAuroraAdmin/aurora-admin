@@ -25,17 +25,17 @@ class CompanionPluginData
   // settingsConfig.js field — no new PHP route-registration code.
   const PLUGINS = [
     "file-manager" => [
-      "zip_url" => "https://aurora.auroradragon.studio/aurora-file-manager.zip",
+      "zip_url" => "https://auroraadmin.dev/aurora-file-manager.zip",
       "plugin_file" => "aurora-file-manager/aurora-file-manager.php",
       "label" => "Aurora File Manager",
     ],
     "database-explorer" => [
-      "zip_url" => "https://aurora.auroradragon.studio/aurora-database-explorer.zip",
+      "zip_url" => "https://auroraadmin.dev/aurora-database-explorer.zip",
       "plugin_file" => "aurora-database-explorer/aurora-database-explorer.php",
       "label" => "Aurora Database Explorer",
     ],
     "site-backup" => [
-      "zip_url" => "https://aurora.auroradragon.studio/aurora-site-backup.zip",
+      "zip_url" => "https://auroraadmin.dev/aurora-site-backup.zip",
       "plugin_file" => "aurora-site-backup/aurora-site-backup.php",
       "label" => "Aurora Site Backup",
     ],

@@ -1,7 +1,7 @@
 <?php
 /*
  * Plugin Name: Aurora Admin
- * Plugin URI: https://aurora.auroradragon.studio
+ * Plugin URI: https://auroraadmin.dev
  * Description: A modern, fast WordPress admin interface.
  * Version: 1.0
  * Author: Aurora Dragon Studio
