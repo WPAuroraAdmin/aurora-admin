@@ -7,12 +7,15 @@ Requires PHP: 7.4
 Stable tag: 1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Source: https://github.com/WPAuroraAdmin/aurora-admin
 
 A modern, fast redesign of the WordPress admin — real replacement screens for Posts, Pages, Media, Users, and more, plus a full dark mode, all free.
 
 == Description ==
 
 Aurora Admin replaces the default WordPress admin with a faster, cleaner interface — without touching how WordPress core actually works underneath. Every screen is a real, functional replacement (not a CSS reskin over the same slow markup): the same data, the same capabilities, the same URLs, just rebuilt.
+
+Full, unminified source (PHP and the Vue admin app) is developed in the open at [github.com/WPAuroraAdmin/aurora-admin](https://github.com/WPAuroraAdmin/aurora-admin). The release ZIP ships the compiled admin app; the uncompiled Vue source and build tooling are in that repository.
 
 **Real replacement screens**
 
