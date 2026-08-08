@@ -80,6 +80,13 @@ class MediaData
       $args["s"] = $search;
     }
 
+    // Mirrors core's own media library restriction (WP_Media_List_Table):
+    // a user who can upload but can't edit other users' content only ever
+    // sees their own uploads.
+    if (!current_user_can("edit_others_posts")) {
+      $args["author"] = get_current_user_id();
+    }
+
     $folder_param = $request->get_param("folderId");
     if ($folder_param !== null && $folder_param !== "") {
       $folder_id = (int) $folder_param;

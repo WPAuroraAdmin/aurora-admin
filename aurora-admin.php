@@ -17,7 +17,7 @@ defined("ABSPATH") || exit();
 
 define("AURORA_ADMIN_VERSION", "1.0");
 define("AURORA_ADMIN_PATH", plugin_dir_path(__FILE__));
-define("AURORA_ADMIN_URL", plugins_url("aurora-admin/"));
+define("AURORA_ADMIN_URL", plugin_dir_url(__FILE__));
 
 require AURORA_ADMIN_PATH . "admin/src/App/AuroraAdmin.php";
 require AURORA_ADMIN_PATH . "admin/src/Options/Settings.php";
@@ -66,7 +66,6 @@ require AURORA_ADMIN_PATH . "admin/src/Media/SvgUploads.php";
 require AURORA_ADMIN_PATH . "admin/src/Media/MediaFolders.php";
 require AURORA_ADMIN_PATH . "admin/src/ImageFormats/ImageFormats.php";
 require AURORA_ADMIN_PATH . "admin/src/Security/Security.php";
-require AURORA_ADMIN_PATH . "admin/src/Code/CodeInjection.php";
 require AURORA_ADMIN_PATH . "admin/src/Rest/MediaFolderData.php";
 require AURORA_ADMIN_PATH . "admin/src/Rest/BugReportData.php";
 require AURORA_ADMIN_PATH . "admin/src/Rest/CompanionPluginData.php";

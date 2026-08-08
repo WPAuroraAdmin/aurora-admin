@@ -28,7 +28,7 @@ class SettingsPage
       "aurora-admin",
       [self::class, "render"],
       "dashicons-admin-generic",
-      3
+      100
     );
   }
 

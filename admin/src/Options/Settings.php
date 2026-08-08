@@ -81,7 +81,118 @@ class Settings
     if (!is_array($value)) {
       return $existing;
     }
-    return array_merge($existing, $value);
+    return array_merge($existing, self::sanitize($value));
+  }
+
+  /**
+   * Type-appropriate sanitizer per known settings field (matches the field
+   * "type" each one is registered with in app/src/pages/settings/
+   * settingsConfig.js). Keys this plugin doesn't know about (e.g. a
+   * companion plugin — Site Backup, etc. — sharing this same option to
+   * store its own settings) pass through unchanged: this only tightens the
+   * fields Aurora's own settings UI actually writes.
+   */
+  private static function sanitize($values)
+  {
+    $types = self::field_types();
+    $out = [];
+    foreach ($values as $key => $value) {
+      $out[$key] = isset($types[$key]) ? self::sanitize_value($types[$key], $value) : $value;
+    }
+    return $out;
+  }
+
+  private static function field_types()
+  {
+    return [
+      "logo" => "url",
+      "dark_logo" => "url",
+      "disable_theme" => "keys",
+      "search_post_types" => "keys",
+      "disable_global_search" => "key",
+      "enable_analytics" => "bool",
+      "track_admins" => "bool",
+      "theme_preset" => "key",
+      "font_family" => "text",
+      "admin_favicon" => "url",
+      "plugin_name" => "text",
+      "text_replacements" => "deep",
+      "style_login" => "bool",
+      "login_logo" => "url",
+      "login_bg_image" => "url",
+      "login_bg_color" => "color",
+      "login_form_bg" => "color",
+      "login_button_color" => "color",
+      "login_redirect_enabled" => "bool",
+      "redirect_unauthenticated_url" => "url",
+      "redirect_roles" => "keys",
+      "redirect_after_login_url" => "url",
+      "menu_search" => "bool",
+      "use_custom_dashboard" => "bool",
+      "dashboard_card_order" => "deep",
+      "dark_mode" => "dark_mode",
+      "modern_posts" => "bool",
+      "modern_pages" => "bool",
+      "modern_media" => "bool",
+      "modern_users" => "bool",
+      "modern_comments" => "bool",
+      "modern_plugins" => "bool",
+      "disable_gutenberg" => "bool",
+      "full_admin_takeover" => "bool",
+      "image_formats_enabled" => "bool",
+      "image_formats_format" => "key",
+      "image_formats_picture_element" => "bool",
+      "enable_svg" => "bool",
+      "disable_xmlrpc" => "bool",
+      "disable_comments" => "bool",
+      "remove_head_junk" => "bool",
+      "disable_emojis" => "bool",
+      "disable_oembed" => "bool",
+      "heartbeat_mode" => "key",
+    ];
+  }
+
+  private static function sanitize_value($type, $value)
+  {
+    switch ($type) {
+      case "bool":
+        return (bool) $value;
+      case "url":
+        return $value === "" ? "" : esc_url_raw((string) $value);
+      case "color":
+        return sanitize_hex_color((string) $value) ?: "";
+      case "text":
+        return sanitize_text_field((string) $value);
+      case "key":
+        return sanitize_key((string) $value);
+      case "keys":
+        return array_values(array_filter(array_map("sanitize_key", (array) $value)));
+      case "dark_mode":
+        // Two producers write this key with different types (see the
+        // show_in_rest schema note above) — a tri-state string or a bool.
+        if (is_bool($value)) {
+          return $value;
+        }
+        return in_array($value, ["light", "dark", "system"], true) ? $value : "system";
+      case "deep":
+        return self::sanitize_deep($value);
+      default:
+        return $value;
+    }
+  }
+
+  private static function sanitize_deep($value)
+  {
+    if (is_string($value)) {
+      return sanitize_text_field($value);
+    }
+    if (is_array($value)) {
+      return array_map([self::class, "sanitize_deep"], $value);
+    }
+    if (is_scalar($value) || $value === null) {
+      return $value;
+    }
+    return null;
   }
 
   public static function get($key = null, $default = null)

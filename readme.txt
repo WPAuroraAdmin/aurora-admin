@@ -1,5 +1,5 @@
 === Aurora Admin ===
-Contributors: Aurora Dragon Studio, NixReaper
+Contributors: Aurora Dragon Studio, NixReaper, auroradragon
 Tags: admin, dashboard, admin theme, dark mode, admin redesign
 Requires at least: 5.5
 Tested up to: 7.0
@@ -47,11 +47,22 @@ File Manager (browse/edit/manage your site's files from wp-admin), Database Expl
 
 = Privacy / external services =
 
-The optional "Report a Bug" screen sends your bug description and basic diagnostics (plugin version, WordPress version, PHP version, active theme name, and your site's domain) to a feedback endpoint on auroraplugins.com when you choose to submit it. Nothing is sent automatically or in the background — this only happens if you fill out and submit that form yourself.
+**First-party visitor analytics** (Settings → General → "Enable analytics") is off by default. When an admin turns it on, each front-end pageview (page URL, referrer domain, device/browser, a two-letter country code if your host provides one, and a session cookie) is recorded into a database table on your own site — nothing is sent off-site, and no data is collected until an admin opts in.
 
-The interface font setting (Settings → Appearance) is empty by default, in which case Aurora uses your system font and makes no external requests. If you choose a Google Font, that font file is loaded from Google Fonts (fonts.googleapis.com) on admin pages, which sends a request to Google's servers. Leave the setting empty to avoid any external font requests.
+See "External services" below for what's sent where and when. Nothing described there happens automatically or in the background — every case is a direct result of an admin action (submitting the bug report form, clicking an "Install & Activate" button, or choosing a Google Font).
 
-The Modules page's "Install & Activate" buttons for Aurora File Manager, Aurora Database Explorer, and Aurora Site Backup download that plugin's zip file from auroraadmin.dev using WordPress's own plugin-installer API, the same mechanism the native Plugins → Add New screen uses for WordPress.org-hosted plugins. This only happens when you click one of those buttons — nothing is downloaded automatically or in the background. (Aurora Site Backup's own remote-storage options, if you install and configure it, are documented in that plugin's own readme.)
+== External services ==
+
+This plugin connects to auroraadmin.dev, operated by Aurora Dragon Studio (the same company that publishes this plugin — also this plugin's own Plugin URI), for two purposes:
+
+**Bug reports** — the optional "Report a Bug" screen (Settings → Report a Bug) sends your bug description and basic diagnostics (plugin version, WordPress version, PHP version, active theme name, and your site's domain) to a feedback endpoint at auroraadmin.dev. This is used only to triage and respond to the bug you're reporting. It's sent only when you fill out and submit that form yourself.
+
+**Companion plugin installer** — the Modules screen's "Install & Activate" buttons for Aurora File Manager, Aurora Database Explorer, and Aurora Site Backup fetch a small manifest (name, description, and download URL for each companion plugin) from auroraadmin.dev, and download the selected plugin's zip file from the same domain using WordPress's own plugin-installer API — the same mechanism the native Plugins → Add New screen uses for WordPress.org-hosted plugins. No personal or site data is sent with the manifest request; the zip download is triggered only when you click one of those buttons.
+
+Terms of Service: TODO-add-url-before-submitting
+Privacy Policy: TODO-add-url-before-submitting
+
+Separately, if you set an interface font under Settings → Appearance (empty/system font by default), that font file is loaded from Google Fonts (fonts.googleapis.com) on admin pages, sending a request to Google's servers. Leave the setting empty to avoid this.
 
 == Installation ==
 
@@ -75,7 +86,7 @@ Aurora Admin only replaces the built-in WordPress admin screens it explicitly ta
 
 = Does Aurora load anything from external servers? =
 
-Not by default. It only makes an external request if you opt in: choosing a Google Font loads it from Google Fonts, submitting the "Report a Bug" form sends it to auroraplugins.com, and the Modules page's install buttons download the companion plugins on click. See "Privacy / external services" above for details.
+Not by default. It only makes an external request if you opt in: choosing a Google Font loads it from Google Fonts, submitting the "Report a Bug" form sends it to auroraadmin.dev, and the Modules page's install buttons download the companion plugins from the same domain on click. See "Privacy / external services" above for details.
 
 = Where do I report a bug? =
 

@@ -24,10 +24,6 @@ class Shell
 {
   public function __construct()
   {
-    // Print the chrome-hiding CSS + loading class as early as possible so
-    // the native menu/toolbar never flash before the shell takes over.
-    add_action("admin_head", [self::class, "print_early_styles"], 0);
-
     add_action("admin_enqueue_scripts", [self::class, "enqueue"]);
 
     // Mount point + serialized data, output at the end of the admin body.
@@ -99,55 +95,46 @@ class Shell
     return ScreenHijack::is_hijack_active();
   }
 
-  public static function print_early_styles()
+  /**
+   * Chrome-hiding CSS + loading class, registered as inline assets on the
+   * earliest hook available (admin_enqueue_scripts) so they print via
+   * admin_print_scripts/admin_print_styles — both of which fire before
+   * admin_head in wp-admin's own load order, so there's no flash of native
+   * chrome before the shell takes over.
+   */
+  private static function enqueue_early_chrome()
   {
-    if (!self::is_enabled()) {
-      return;
-    }
-
     $native_class = self::is_own_page() ? "" : "aurora-native-page";
-    ?>
-    <script>
-      // Synchronous: marks the document active before first paint so the
-      // hide-native-chrome CSS below applies with no flash. This class
+
+    wp_register_script("aurora-admin-early", false, [], AURORA_ADMIN_VERSION);
+    wp_enqueue_script("aurora-admin-early");
+    $js = "document.documentElement.classList.add(\"aurora-active\");";
+    if ($native_class) {
+      // Synchronous: marks the document active/native before first paint so
+      // the hide-native-chrome CSS below applies with no flash. This class
       // persists for the whole session (chrome stays hidden); aurora-ready
       // is added later by the Vue shell only to reveal the framed content.
-      document.documentElement.classList.add("aurora-active");
-      <?php if ($native_class): ?>
-      document.documentElement.classList.add("<?php echo esc_js($native_class); ?>");
-      <?php endif; ?>
-      // Failsafe: if the Vue shell never signals ready, drop aurora-active
-      // so native admin returns and a failed build can't lock the user out.
-      window.setTimeout(function () {
-        if (!document.documentElement.classList.contains("aurora-ready")) {
-          document.documentElement.classList.remove("aurora-active");
-        }
-      }, 8000);
-    </script>
-    <style id="aurora-admin-early">
-      /* Hide native chrome for the whole active session (not just loading),
-         so it stays hidden once the shell is ready. */
-      html.aurora-active #adminmenumain,
-      html.aurora-active #wpadminbar,
-      html.aurora-active #wpfooter {
-        display: none !important;
-      }
-      html.aurora-active.wp-toolbar {
-        padding-top: 0 !important;
-      }
-      /* Keep the framed content hidden only until the shell mounts, to avoid
-         a flash of unframed/unpositioned content. No !important and no
-         margin rules here, so the framing rules in shell-frame.css win
-         cleanly once aurora-ready is set. */
-      html.aurora-active:not(.aurora-ready) #wpbody {
-        opacity: 0;
-      }
-      html.aurora-ready #wpbody {
-        opacity: 1;
-        transition: opacity 0.15s ease;
-      }
-    </style>
-    <?php
+      $js .= "document.documentElement.classList.add(" . wp_json_encode($native_class) . ");";
+    }
+    // Failsafe: if the Vue shell never signals ready, drop aurora-active so
+    // native admin returns and a failed build can't lock the user out.
+    $js .= "window.setTimeout(function(){if(!document.documentElement.classList.contains(\"aurora-ready\")){document.documentElement.classList.remove(\"aurora-active\");}}, 8000);";
+    wp_add_inline_script("aurora-admin-early", $js);
+
+    wp_register_style("aurora-admin-early", false, [], AURORA_ADMIN_VERSION);
+    wp_enqueue_style("aurora-admin-early");
+    // Hide native chrome for the whole active session (not just loading), so
+    // it stays hidden once the shell is ready. Framed content (#wpbody) is
+    // kept hidden only until the shell mounts, to avoid a flash of
+    // unframed/unpositioned content; no !important/margin rules here, so
+    // the framing rules in shell-frame.css win cleanly once aurora-ready is set.
+    wp_add_inline_style(
+      "aurora-admin-early",
+      "html.aurora-active #adminmenumain,html.aurora-active #wpadminbar,html.aurora-active #wpfooter{display:none !important;}" .
+      "html.aurora-active.wp-toolbar{padding-top:0 !important;}" .
+      "html.aurora-active:not(.aurora-ready) #wpbody{opacity:0;}" .
+      "html.aurora-ready #wpbody{opacity:1;transition:opacity .15s ease;}"
+    );
   }
 
   public static function enqueue()
@@ -155,6 +142,8 @@ class Shell
     if (!self::is_enabled()) {
       return;
     }
+
+    self::enqueue_early_chrome();
 
     // The sidebar renders WordPress's own dashicon menu glyphs, so make
     // sure the dashicons font is present (core registers it under this

@@ -38,7 +38,6 @@ class SetupWizard
     // Turn the immersive shell off on this page so the wizard owns the whole
     // viewport; native chrome is hidden separately (printed below).
     add_filter("aurora_admin_shell_enabled", [self::class, "disable_shell_here"]);
-    add_action("admin_head", [self::class, "hide_native_chrome"]);
   }
 
   /** Flag a one-time redirect to the wizard, unless setup was already done. */
@@ -93,24 +92,20 @@ class SetupWizard
     // Image fields (logo, dark logo, favicon) use the real media library.
     wp_enqueue_media();
     Assets::enqueue("aurora-admin-setup", "entries/setup-wizard.js");
-  }
 
-  /** Hide native WP chrome on the wizard page (the shell, which normally does
-   *  this, is turned off here). The Vue app also renders as a full-screen
-   *  overlay, but this keeps the admin bar/menu from flashing first. */
-  public static function hide_native_chrome()
-  {
-    if (!self::is_wizard_page()) {
-      return;
-    }
-    ?>
-    <style id="aurora-setup-hide-chrome">
-      #adminmenumain, #wpadminbar, #wpfooter { display: none !important; }
-      html.wp-toolbar { padding-top: 0 !important; }
-      #wpcontent { margin-left: 0 !important; }
-      #wpbody-content { padding: 0 !important; float: none; width: auto; }
-    </style>
-    <?php
+    // Hide native WP chrome on the wizard page (the shell, which normally
+    // does this, is turned off here). The Vue app also renders as a
+    // full-screen overlay, but this keeps the admin bar/menu from flashing
+    // first.
+    wp_register_style("aurora-admin-setup-hide-chrome", false, [], AURORA_ADMIN_VERSION);
+    wp_enqueue_style("aurora-admin-setup-hide-chrome");
+    wp_add_inline_style(
+      "aurora-admin-setup-hide-chrome",
+      "#adminmenumain,#wpadminbar,#wpfooter{display:none !important;}" .
+      "html.wp-toolbar{padding-top:0 !important;}" .
+      "#wpcontent{margin-left:0 !important;}" .
+      "#wpbody-content{padding:0 !important;float:none;width:auto;}"
+    );
   }
 
   public static function register_rest()

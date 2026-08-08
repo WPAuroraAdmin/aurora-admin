@@ -22,8 +22,13 @@ class DashboardData
     register_rest_route("aurora-admin/v1", "/dashboard", [
       "methods" => "GET",
       "callback" => [self::class, "handle"],
+      // Aggregates unpublished/scheduled content, comment moderation queues,
+      // site-wide user registration analytics, and server health details —
+      // all admin-facing data, not per-content-authorized, so this requires
+      // manage_options rather than the base "read" capability every logged-in
+      // user has.
       "permission_callback" => function () {
-        return current_user_can("read");
+        return current_user_can("manage_options");
       },
       "args" => [
         "from" => ["type" => "string", "required" => false],

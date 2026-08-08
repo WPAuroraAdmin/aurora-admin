@@ -81,10 +81,17 @@ class SvgUploads
     $clean = preg_replace(
       [
         "/<script\b[^>]*>.*?<\/script>/is",
+        "/<(iframe|object|embed|foreignObject)\b[^>]*>.*?<\/\\1>/is",
+        "/<(iframe|object|embed)\b[^>]*\/?>/is",
         '/\son\w+\s*=\s*"[^"]*"/i',
         "/\son\w+\s*=\s*'[^']*'/i",
         '/\son\w+\s*=\s*[^\s>]+/i',
-        '/(href|xlink:href)\s*=\s*"javascript:[^"]*"/i',
+        // Any attribute (href, xlink:href, formaction, …) whose value opens
+        // with the javascript: scheme, in any of the three attribute-value
+        // quoting styles — not just a double-quoted href/xlink:href.
+        '/[\w:\-]+\s*=\s*"\s*javascript:[^"]*"/i',
+        "/[\w:\-]+\s*=\s*'\s*javascript:[^']*'/i",
+        '/[\w:\-]+\s*=\s*javascript:[^\s>]*/i',
       ],
       "",
       $content

@@ -34,7 +34,7 @@ class PagesData
     register_rest_route("aurora-admin/v1", "/pages/trash", [
       "methods" => "POST",
       "callback" => [self::class, "trash_page"],
-      "permission_callback" => [self::class, "can_edit_param_page"],
+      "permission_callback" => [self::class, "can_delete_param_page"],
       "args" => [
         "id" => ["type" => "integer", "required" => true],
       ],
@@ -43,7 +43,7 @@ class PagesData
     register_rest_route("aurora-admin/v1", "/pages/restore", [
       "methods" => "POST",
       "callback" => [self::class, "restore_page"],
-      "permission_callback" => [self::class, "can_edit_param_page"],
+      "permission_callback" => [self::class, "can_delete_param_page"],
       "args" => [
         "id" => ["type" => "integer", "required" => true],
       ],
@@ -59,10 +59,13 @@ class PagesData
     ]);
   }
 
-  public static function can_edit_param_page($request)
+  // Trashing/restoring is a deletion-adjacent action (undoing it returns the
+  // page to circulation), so it's gated the same as permanent delete rather
+  // than plain edit — matches core's own trash/untrash capability check.
+  public static function can_delete_param_page($request)
   {
     $id = (int) $request->get_param("id");
-    return $id && current_user_can("edit_page", $id);
+    return $id && current_user_can("delete_page", $id);
   }
 
   public static function can_delete_route_page($request)

@@ -22,7 +22,6 @@ class DashboardTakeover
   public function __construct()
   {
     add_action("admin_enqueue_scripts", [self::class, "maybe_enqueue"]);
-    add_action("admin_head", [self::class, "hide_native"]);
     add_action("in_admin_header", [self::class, "render_mount"]);
   }
 
@@ -45,25 +44,15 @@ class DashboardTakeover
     }
 
     Assets::enqueue("aurora-admin-dashboard", "entries/dashboard.js");
-  }
 
-  public static function hide_native()
-  {
-    if (!self::is_dashboard()) {
-      return;
-    }
-    ?>
-    <style id="aurora-admin-dashboard-takeover">
-      /* The Aurora dashboard is rendered in #wpcontent (above #wpbody) via
-         in_admin_header, so the entire native #wpbody — heading, welcome
-         panel, widgets, and the Screen Options / Help tabs inside it — is
-         hidden. This leaves just the Aurora dashboard with no empty native
-         frame below it. Printed only on the dashboard screen. */
-      html.aurora-active #wpbody {
-        display: none !important;
-      }
-    </style>
-    <?php
+    // The Aurora dashboard is rendered in #wpcontent (above #wpbody) via
+    // in_admin_header, so the entire native #wpbody — heading, welcome
+    // panel, widgets, and the Screen Options / Help tabs inside it — is
+    // hidden. This leaves just the Aurora dashboard with no empty native
+    // frame below it. Enqueued only on the dashboard screen.
+    wp_register_style("aurora-admin-dashboard-takeover", false, [], AURORA_ADMIN_VERSION);
+    wp_enqueue_style("aurora-admin-dashboard-takeover");
+    wp_add_inline_style("aurora-admin-dashboard-takeover", "html.aurora-active #wpbody{display:none !important;}");
   }
 
   public static function render_mount()

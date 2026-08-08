@@ -48,7 +48,6 @@ class LoginStyle
     $bg_color = sanitize_hex_color((string) Settings::get("login_bg_color", "")) ?: "";
     $form_bg = sanitize_hex_color((string) Settings::get("login_form_bg", "")) ?: "#1c2333";
     $accent = sanitize_hex_color((string) Settings::get("login_button_color", "")) ?: "#4f7cff";
-    $custom_css = str_ireplace("</style>", "", (string) Settings::get("login_custom_css", ""));
 
     if ($bg_image) {
       $background = "url(" . esc_url($bg_image) . ") center / cover no-repeat";
@@ -57,81 +56,31 @@ class LoginStyle
     } else {
       $background = "linear-gradient(135deg, #1b2333 0%, #0f1420 100%)";
     }
-    ?>
-    <style>
-      body.login {
-        background: <?php echo $background; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- composed from a sanitize_hex_color() color or esc_url()'d image above. ?>;
-      }
-      body.login #login h1 a {
-        <?php if ($logo): ?>
-        background-image: url(<?php echo esc_url($logo); ?>);
-        background-size: contain;
-        background-position: center;
-        width: 100%;
-        height: 80px;
-        <?php else: ?>
-        filter: brightness(0) invert(1);
-        <?php endif; ?>
-      }
-      body.login #login {
-        width: 360px;
-      }
-      body.login form#loginform,
-      body.login form#registerform,
-      body.login form#lostpasswordform {
-        background: <?php echo esc_attr($form_bg); ?>;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
-        padding: 26px 24px 24px;
-      }
-      body.login label {
-        color: #cbd3e1;
-      }
-      body.login input[type="text"],
-      body.login input[type="password"],
-      body.login input[type="email"] {
-        background: #10141f;
-        border-color: rgba(255, 255, 255, 0.12);
-        color: #fff;
-        box-shadow: none;
-      }
-      body.login input[type="text"]:focus,
-      body.login input[type="password"]:focus,
-      body.login input[type="email"]:focus {
-        border-color: <?php echo esc_attr($accent); ?>;
-        box-shadow: 0 0 0 1px <?php echo esc_attr($accent); ?>;
-      }
-      body.login .forgetmenot label {
-        color: #9fb0d0;
-      }
-      body.login #backtoblog a,
-      body.login #nav a {
-        color: #9fb0d0;
-      }
-      body.login #backtoblog a:hover,
-      body.login #nav a:hover {
-        color: #fff;
-      }
-      body.login .wp-core-ui .button-primary {
-        background: <?php echo esc_attr($accent); ?>;
-        border-color: <?php echo esc_attr($accent); ?>;
-        box-shadow: none;
-        text-shadow: none;
-      }
-      body.login .wp-core-ui .button-primary:hover,
-      body.login .wp-core-ui .button-primary:focus {
-        filter: brightness(0.92);
-      }
-      body.login #login_error,
-      body.login .message,
-      body.login .success {
-        background: #232b40;
-        border-left-color: <?php echo esc_attr($accent); ?>;
-        color: #e2e8f4;
-      }
-      <?php echo $custom_css; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin-authored login CSS, output raw by design; </style> stripped above. ?>
-    </style>
-    <?php
+
+    $logo_css = $logo
+      ? "background-image:url(" . esc_url($logo) . ");background-size:contain;background-position:center;width:100%;height:80px;"
+      : "filter:brightness(0) invert(1);";
+
+    $css = "body.login{background:{$background};}" .
+      "body.login #login h1 a{{$logo_css}}" .
+      "body.login #login{width:360px;}" .
+      "body.login form#loginform,body.login form#registerform,body.login form#lostpasswordform{" .
+      "background:{$form_bg};border:1px solid rgba(255,255,255,.08);border-radius:12px;" .
+      "box-shadow:0 10px 40px rgba(0,0,0,.35);padding:26px 24px 24px;}" .
+      "body.login label{color:#cbd3e1;}" .
+      "body.login input[type=text],body.login input[type=password],body.login input[type=email]{" .
+      "background:#10141f;border-color:rgba(255,255,255,.12);color:#fff;box-shadow:none;}" .
+      "body.login input[type=text]:focus,body.login input[type=password]:focus,body.login input[type=email]:focus{" .
+      "border-color:{$accent};box-shadow:0 0 0 1px {$accent};}" .
+      "body.login .forgetmenot label{color:#9fb0d0;}" .
+      "body.login #backtoblog a,body.login #nav a{color:#9fb0d0;}" .
+      "body.login #backtoblog a:hover,body.login #nav a:hover{color:#fff;}" .
+      "body.login .wp-core-ui .button-primary{background:{$accent};border-color:{$accent};box-shadow:none;text-shadow:none;}" .
+      "body.login .wp-core-ui .button-primary:hover,body.login .wp-core-ui .button-primary:focus{filter:brightness(.92);}" .
+      "body.login #login_error,body.login .message,body.login .success{background:#232b40;border-left-color:{$accent};color:#e2e8f4;}";
+
+    wp_register_style("aurora-admin-login", false, [], AURORA_ADMIN_VERSION);
+    wp_enqueue_style("aurora-admin-login");
+    wp_add_inline_style("aurora-admin-login", $css);
   }
 }

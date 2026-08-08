@@ -4,10 +4,10 @@ namespace AuroraAdmin\Rest;
 defined("ABSPATH") || exit();
 
 /**
- * POST /bug-report — forwards a bug report to the Aurora Dragon Studio
- * feedback endpoint, tagged with basic diagnostics (plugin/WP/PHP version,
- * active theme, domain) so reports can be triaged without a separate
- * ticketing system.
+ * POST /bug-report — forwards a bug report to the auroraadmin.dev feedback
+ * endpoint, tagged with basic diagnostics (plugin/WP/PHP version, active
+ * theme, domain) so reports can be triaged without a separate ticketing
+ * system.
  */
 class BugReportData
 {
@@ -30,7 +30,7 @@ class BugReportData
     ]);
   }
 
-  const API_URL = "https://auroraplugins.com/wp-json/aurora-licensing/v1/report-bug";
+  const API_URL = "https://auroraadmin.dev/wp-json/aurora-licensing/v1/report-bug";
 
   public static function submit($request)
   {

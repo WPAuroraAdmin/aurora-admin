@@ -64,8 +64,9 @@ export const settingsGroups = [
             key: 'enable_analytics',
             type: 'toggle',
             label: 'Enable analytics',
-            description: 'Track first-party visitor analytics for the dashboard.',
-            default: true,
+            description:
+              'Off by default. When enabled, records first-party visitor analytics (page URL, referrer domain, device/browser, country, and a session cookie) into your own database for the dashboard — nothing is sent off-site.',
+            default: false,
           },
           {
             key: 'track_admins',
@@ -183,16 +184,6 @@ export const settingsGroups = [
             label: 'Button color',
             description: 'Color of the primary “Log In” button and the field focus accent.',
             default: '#4f7cff',
-            dependsOn: 'style_login',
-          },
-          {
-            key: 'login_custom_css',
-            type: 'textarea',
-            mono: true,
-            rows: 8,
-            label: 'Custom login CSS',
-            description: 'Extra CSS applied to the login screen, after Aurora’s own styles.',
-            placeholder: 'body.login { … }',
             dependsOn: 'style_login',
           },
         ],
@@ -483,69 +474,6 @@ export const settingsGroups = [
               { value: 'slow', label: 'Slow (60s)' },
               { value: 'disabled', label: 'Disabled' },
             ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'code',
-    title: 'Code',
-    icon: 'dashicons-editor-code',
-    categories: [
-      {
-        id: 'custom-code',
-        title: 'Custom CSS & JS',
-        subtitle: 'Inject your own CSS and JavaScript into the WordPress admin',
-        icon: 'dashicons-admin-customizer',
-        fields: [
-          {
-            key: 'custom_admin_css',
-            type: 'textarea',
-            mono: true,
-            rows: 10,
-            label: 'Admin CSS',
-            description:
-              'CSS added to every wp-admin page, inside a <style> tag in the admin <head>. Enter CSS only — no <style> tags needed.',
-            placeholder: '.wrap { max-width: 1200px; }',
-          },
-          {
-            key: 'custom_admin_js',
-            type: 'textarea',
-            mono: true,
-            rows: 10,
-            label: 'Admin JavaScript',
-            description:
-              'JavaScript added to the admin footer, inside a <script> tag. Enter JS only — no <script> tags needed.',
-            placeholder: "console.log('Hello from Aurora');",
-          },
-        ],
-      },
-      {
-        id: 'header-footer',
-        title: 'Header & footer scripts',
-        subtitle: 'Inject raw code into your site’s front-end <head> and footer',
-        icon: 'dashicons-editor-code',
-        fields: [
-          {
-            key: 'header_scripts',
-            type: 'textarea',
-            mono: true,
-            rows: 8,
-            label: 'Header scripts',
-            description:
-              'Raw HTML/JS printed in the front-end <head> — analytics snippets, verification meta tags, etc. Include the full <script>/<meta> tags.',
-            placeholder: '<!-- e.g. analytics -->\n<script>…</script>',
-          },
-          {
-            key: 'footer_scripts',
-            type: 'textarea',
-            mono: true,
-            rows: 8,
-            label: 'Footer scripts',
-            description:
-              'Raw HTML/JS printed just before </body> on the front end. Include the full <script> tags.',
-            placeholder: '<script>…</script>',
           },
         ],
       },

@@ -67,9 +67,9 @@ class Analytics
    */
   public static function record()
   {
-    // Tracking is on unless explicitly disabled in Settings > General.
-    $enabled = \AuroraAdmin\Options\Settings::get("enable_analytics", true);
-    if ($enabled === false || $enabled === 0 || $enabled === "0") {
+    // Opt-in: tracking is off unless explicitly enabled in Settings > General.
+    $enabled = \AuroraAdmin\Options\Settings::get("enable_analytics", false);
+    if ($enabled !== true && $enabled !== 1 && $enabled !== "1") {
       return;
     }
 

@@ -52,7 +52,6 @@ use AuroraAdmin\Media\SvgUploads;
 use AuroraAdmin\Media\MediaFolders;
 use AuroraAdmin\ImageFormats\ImageFormats;
 use AuroraAdmin\Security\Security;
-use AuroraAdmin\Code\CodeInjection;
 use AuroraAdmin\Rest\MediaFolderData;
 use AuroraAdmin\Rest\BugReportData;
 use AuroraAdmin\Rest\CompanionPluginData;
@@ -110,7 +109,6 @@ class AuroraAdmin
     new MediaFolders();
     new ImageFormats();
     new Security();
-    new CodeInjection();
     new MediaFolderData();
     new BugReportData();
     new CompanionPluginData();

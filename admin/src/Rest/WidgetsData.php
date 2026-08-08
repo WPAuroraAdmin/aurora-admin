@@ -182,12 +182,25 @@ class WidgetsData
     wp_set_sidebars_widgets($assignments);
 
     if (preg_match('/^(.+)-(\d+)$/', $widget_id, $m)) {
+      global $wp_registered_widget_controls;
       $id_base = $m[1];
       $number = (int) $m[2];
-      $instances = get_option("widget_{$id_base}");
-      if (is_array($instances) && isset($instances[$number])) {
-        unset($instances[$number]);
-        update_option("widget_{$id_base}", $instances);
+      // Only touch widget_{$id_base} if $id_base names an actual registered
+      // widget type — otherwise a crafted id lets an edit_theme_options user
+      // read/write an arbitrary unrelated "widget_*" option.
+      $known_base = false;
+      foreach ((array) $wp_registered_widget_controls as $control) {
+        if (isset($control["id_base"]) && $control["id_base"] === $id_base) {
+          $known_base = true;
+          break;
+        }
+      }
+      if ($known_base) {
+        $instances = get_option("widget_{$id_base}");
+        if (is_array($instances) && isset($instances[$number])) {
+          unset($instances[$number]);
+          update_option("widget_{$id_base}", $instances);
+        }
       }
     }
 
